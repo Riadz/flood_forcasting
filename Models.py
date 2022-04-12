@@ -127,7 +127,9 @@ class ForcastModel(nn.Module):
   def forward(self, x):
     return self.pipeline(x)
   
-  def fit(self, data_x, data_y, epoches=100):
+  def fit(self, data_x, data_y, epoches=100, progress=True):
+    start_time = timer()
+    
     for epoche in range(epoches):
       epoche_start_time = timer()
 
@@ -140,9 +142,15 @@ class ForcastModel(nn.Module):
         self.opti.step()
 
       epoche_exec_time = f"{(timer() - epoche_start_time):.1f}"
-      print(
-          f'epoche: {epoche}, loss: {loss.item():.8f}, execution time: {epoche_exec_time}s'
-      )
+      if progress:
+        print(
+            f'epoche: {epoche}, loss: {loss.item():.8f}, execution time: {epoche_exec_time}s'
+        )
+    
+    exec_time = f"{(timer() - start_time):.1f}"
+    print(
+        f'✅ training ended ,final loss: {loss.item():.8f}, time: {exec_time}s'
+    )
 
   def fit_batch(self, data_x, data_y, epoches=800, batch_size=200, progress=True):
     items_len = data_x.shape[0]
