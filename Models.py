@@ -98,11 +98,11 @@ class AutoEncoder(nn.Module):
 # 
 
 class ForcastModel(nn.Module):
-  def __init__(self):
+  def __init__(self, input=12):
     super().__init__()
 
     self.pipeline = nn.Sequential(
-      nn.Linear(12, 48),
+      nn.Linear(input, 48),
       nn.ReLU(),
       nn.Linear(48, 48),
       nn.ReLU(),
