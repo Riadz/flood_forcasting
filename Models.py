@@ -181,13 +181,13 @@ class ForcastModel(nn.Module):
     )
     print(f'✅ model saved as "{name}_{current_datetime}.pt"')
 
-  def test(self, data_x, data_y):
+  def test(self, data_x, data_y, bar=0.7):
     # test
     acc_array = []
     for i in range(len(data_x)):
         recon = self(data_x[i])
         loss_ = self.crit(recon, data_y[i])
-        recon_ = 1 if recon[0].item() > 0.7 else 0
+        recon_ = 1 if recon[0].item() > bar else 0
         acc_array.append(1 if data_y[i] == recon_ else 0)
 
     print(f'loss: {loss_:.4f}, acc: {sum(acc_array)/len(data_y):.4f}')
