@@ -11,10 +11,10 @@ base_url = r'.'
 # 
 
 class AutoEncoder(nn.Module):
-  def __init__(self, layers=[8, 6]):
+  def __init__(self, layers=[8, 6], input=12):
     super().__init__()
 
-    in_net = 12
+    in_net = input
     out_net = 3
 
     hidden_net = [nn.ReLU()]
@@ -84,6 +84,31 @@ class AutoEncoder(nn.Module):
         f'✅ training ended ,final loss: {loss.item():.8f}, time: {exec_time}s'
     )
     self.current_loss = loss.item()
+  
+  def fit__(self, data_x, data_y, epoches=100, progress=True):
+    start_time = timer()
+    
+    for epoche in range(epoches):
+      epoche_start_time = timer()
+
+      for i in range(len(data_x)):
+        recon = self(data_x[i])
+        loss = self.crit(recon, data_y[i])
+        
+        self.opti.zero_grad()
+        loss.backward()
+        self.opti.step()
+
+      epoche_exec_time = f"{(timer() - epoche_start_time):.1f}"
+      if progress:
+        print(
+            f'epoche: {epoche}, loss: {loss.item():.8f}, execution time: {epoche_exec_time}s'
+        )
+    
+    exec_time = f"{(timer() - start_time):.1f}"
+    print(
+        f'✅ training ended ,final loss: {loss.item():.8f}, time: {exec_time}s'
+    )
 
   def save(self, name='auto_model'):
     current_datetime = datetime.now().strftime('%d-%m_%H-%M-%S')
