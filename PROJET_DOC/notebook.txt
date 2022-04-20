@@ -1,0 +1,7 @@
+https://colab.research.google.com/drive/17oARAthttryeX7Xg5HGq4DoL-1jofX4O?usp=sharing
+
+http://ukkdd.org.uk/2017/info/talks/adventures.pdf
+https://rgu-repository.worktribe.com/output/246044/a-genetic-algorithm-approach-to-optimising-random-forests-applied-to-class-engineered-data
+
+https://www.researchgate.net/publication/282027481_A_fine-grained_Random_Forests_using_class_decomposition_an_application_to_medical_diagnosis
+
