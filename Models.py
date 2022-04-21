@@ -283,7 +283,7 @@ class ForcastModelMulti(nn.Module):
       epoche_exec_time = f"{(timer() - epoche_start_time):.1f}"
       if progress:
         print(
-            f'epoche: {epoche}, loss: {loss.item():.8f}, execution time: {epoche_exec_time}s'
+            f'epoche: {epoche}, loss: {loss.item():.12f}, execution time: {epoche_exec_time}s'
         )
 
     exec_time = f"{(timer() - start_time):.1f}"
