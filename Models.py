@@ -171,12 +171,12 @@ class ForcastModel(nn.Module):
       epoche_exec_time = f"{(timer() - epoche_start_time):.1f}"
       if progress:
         print(
-            f'epoche: {epoche}, loss: {loss.item():.8f}, execution time: {epoche_exec_time}s'
+            f'epoche: {epoche}, loss: {loss.item():.12f}, execution time: {epoche_exec_time}s'
         )
 
     exec_time = f"{(timer() - start_time):.1f}"
     print(
-        f'✅ training ended ,final loss: {loss.item():.8f}, time: {exec_time}s'
+        f'✅ training ended ,final loss: {loss.item():.12f}, time: {exec_time}s'
     )
 
   def fit_batch(self, data_x, data_y, epoches=800, batch_size=200, progress=True):
@@ -216,7 +216,7 @@ class ForcastModel(nn.Module):
     )
     print(f'✅ model saved as "{name}_{current_datetime}.pt"')
 
-  def test(self, data_x, data_y, bar=0.7):
+  def test(self, data_x, data_y, bar=0.5):
     # test
     acc_array = []
     for i in range(len(data_x)):
@@ -253,7 +253,7 @@ class ForcastModelMulti(nn.Module):
     self.init()
 
   def init(self):
-    self.opti = optim.SGD(self.parameters(), lr=1e-1)
+    self.opti = optim.Adam(self.parameters(), lr=1e-3, weight_decay=1e-5)
 
   def forward(self, x):
     return self.pipeline(x)
@@ -288,7 +288,7 @@ class ForcastModelMulti(nn.Module):
 
     exec_time = f"{(timer() - start_time):.1f}"
     print(
-        f'✅ training ended ,final loss: {loss.item():.8f}, time: {exec_time}s'
+        f'✅ training ended ,final loss: {loss.item():.12f}, time: {exec_time}s'
     )
 
   def fit_batch(self, data_x, data_y, epoches=800, batch_size=200, progress=True):
@@ -328,7 +328,7 @@ class ForcastModelMulti(nn.Module):
     )
     print(f'✅ model saved as "{name}_{current_datetime}.pt"')
 
-  def test(self, data_x, data_y, bar=0.7):
+  def test(self, data_x, data_y, bar=0.5):
     # test
     acc_array = []
     for i in range(len(data_x)):
