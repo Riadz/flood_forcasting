@@ -4,6 +4,8 @@ openpyxl==3.0.9
 matplotlib==3.5.1
 PyQt5==5.15.6
 kmeans-pytorch==0.3
+graphviz==0.20
+pydotplus==2.0.2
 
 #
 autopep8==1.6.0
