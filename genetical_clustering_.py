@@ -51,13 +51,13 @@ def main():
       r'./data/Data_vietnam.csv', delimiter=','
   )[1:]
 
-  gen_clu = GenCluster(DATA, 1)
-  np.savetxt('genetical_clustering_.log', gen_clu.pop_bin, fmt='%s')
+  gen_clu = GenCluster(DATA, 4)
+  # np.savetxt('genetical_clustering_.log', gen_clu.pop_bin, fmt='%s')
 
   for i in range(gen_clu.pop_size):
 
-    print(i, gen_clu.pop[i])
-    print(i, get_set(rand_seed, gen_clu.pop[i][0][0], 15784))
+    print(i, '--', gen_clu.pop[i])
+    # print(i, get_set(rand_seed, gen_clu.pop[i][0][0], 15784))
 
   # a = OneMax()
   # print(a.create_solution())
