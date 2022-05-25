@@ -2,10 +2,10 @@ import math
 import random as rd
 import numpy as np
 import functools as ft
-from jmetal.algorithm.singleobjective import GeneticAlgorithm
+# from jmetal.algorithm.singleobjective import GeneticAlgorithm
 
-from jmetal.core.problem import BinaryProblem
-from jmetal.core.solution import BinarySolution
+# from jmetal.core.problem import BinaryProblem
+# from jmetal.core.solution import BinarySolution
 
 rand_seed = 99
 np.random.seed(rand_seed)
