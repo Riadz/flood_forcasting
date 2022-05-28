@@ -2,48 +2,16 @@ import math
 import random as rd
 import numpy as np
 import functools as ft
-# from jmetal.algorithm.singleobjective import GeneticAlgorithm
 
-# from jmetal.core.problem import BinaryProblem
-# from jmetal.core.solution import BinarySolution
+from jmetal.algorithm.singleobjective import GeneticAlgorithm
+from jmetal.core.problem import BinaryProblem
+from jmetal.core.solution import BinarySolution
 
 rand_seed = 99
 np.random.seed(rand_seed)
 rd.seed(rand_seed)
 
 # MAX VALUE: 65000
-
-
-# class OneMax(BinaryProblem):
-#   def __init__(self, number_of_bits: int = 256):
-#     super(OneMax, self).__init__()
-#     self.number_of_bits = number_of_bits
-#     self.number_of_objectives = 1
-#     self.number_of_variables = 1
-#     self.number_of_constraints = 0
-
-#     self.obj_directions = [self.MINIMIZE]
-#     self.obj_labels = ["Ones"]
-
-#   def evaluate(self, solution: BinarySolution) -> BinarySolution:
-#     counter_of_ones = 0
-#     for bits in solution.variables[0]:
-#       if bits:
-#         counter_of_ones += 1
-
-#     solution.objectives[0] = -1.0 * counter_of_ones
-
-#     return solution
-
-#   def create_solution(self) -> BinarySolution:
-#     new_solution = BinarySolution(
-#         number_of_variables=1, number_of_objectives=1)
-#     new_solution.variables[0] = [True if rd.randint(
-#         0, 1) == 0 else False for _ in range(self.number_of_bits)]
-#     return new_solution
-
-#   def get_name(self) -> str:
-#     return "OneMax"
 
 
 def main():
@@ -54,16 +22,66 @@ def main():
   gen_clu = GenCluster(DATA, 16)
   np.savetxt('genetical_clustering_.log', gen_clu.pop_bin, fmt='%s')
 
+  print(get_comb(gen_clu.pop_count-1, (gen_clu.pop_count-1)/2))
+  exit()
+
   for i in range(gen_clu.pop_size):
 
     print(i, gen_clu.pop[i])
-    # print(i, gen_clu.pop_bin[i])
+    print(i, gen_clu.pop_bin[i])
     # print(i, get_set(rand_seed, gen_clu.pop[i][0][0], 15784))
 
   # a = OneMax()
   # print(a.create_solution())
 
   print('end')
+
+
+class GenClust(BinaryProblem):
+  def __init__(self, data, pop_size: int = 8, clust_min: int = None):
+    super(GenClust, self).__init__()
+
+    self.data = np.array(data)
+    self.p = int(data.shape[0])
+
+    self.clust_min = clust_min or int(self.p * 0.20)
+
+    self.k_min = 2
+    self.k_max = int(self.p/self.clust_min)
+
+    self.clust_max = int(self.p-((self.k_max-1)*(self.clust_min)))
+
+    self.number_of_bits = self.calc_number_of_bits()
+    self.number_of_objectives = 1
+    self.number_of_variables = 1
+    self.number_of_constraints = 0
+
+    self.obj_directions = [self.MINIMIZE]
+    self.obj_labels = ["Ones"]
+
+  def evaluate(self, solution: BinarySolution) -> BinarySolution:
+    counter_of_ones = 0
+    for bits in solution.variables[0]:
+      if bits:
+        counter_of_ones += 1
+    solution.objectives[0] = -1.0 * counter_of_ones
+    return solution
+
+  def create_solution(self) -> BinarySolution:
+    new_solution = BinarySolution(
+        number_of_variables=1, number_of_objectives=1)
+    new_solution.variables[0] = [True if rd.randint(
+        0, 1) == 0 else False for _ in range(self.number_of_bits)]
+    return new_solution
+
+  # calc
+  def calc_number_of_bits(self):
+    num = self.k_max.bit_length()
+    num += (self.k_max * (self.p - self.clust_min))
+
+  #
+  def get_name(self) -> str:
+    return "OneMax"
 
 
 class GenCluster():
@@ -75,7 +93,7 @@ class GenCluster():
     self.k_min = 2
     self.k_max = int(self.pop_count/self.pop_min)
 
-    self.bin_size = 32
+    self.bin_size = 16
     self.bin_len = self.k_max * self.bin_size * 2
 
     self.pop = self.gen_population()
