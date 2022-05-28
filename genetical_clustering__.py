@@ -6,18 +6,35 @@ import functools as ft
 from jmetal.algorithm.singleobjective import GeneticAlgorithm
 from jmetal.core.problem import BinaryProblem
 from jmetal.core.solution import BinarySolution
+from jmetal.operator import SBXCrossover, PolynomialMutation, BestSolutionSelection
+from jmetal.util.termination_criterion import StoppingByEvaluations
 
 rand_seed = 99
 np.random.seed(rand_seed)
 rd.seed(rand_seed)
-
-# MAX VALUE: 65000
 
 
 def main():
   DATA = np.genfromtxt(
       r'./data/Data_vietnam.csv', delimiter=','
   )[1:]
+
+  gen_clu = GenClust(DATA)
+
+  gen_alg = GeneticAlgorithm(
+      problem=gen_clu,
+      population_size=100,
+      offspring_population_size=100,
+      mutation=PolynomialMutation(
+          probability=1.0 / gen_clu.number_of_variables, distribution_index=20),
+      crossover=SBXCrossover(probability=1.0, distribution_index=20),
+      termination_criterion=StoppingByEvaluations(max_evaluations=25000),
+      selection=BestSolutionSelection()
+  )
+
+  gen_alg.run()
+
+  exit()
 
   gen_clu = GenCluster(DATA, 16)
   np.savetxt('genetical_clustering_.log', gen_clu.pop_bin, fmt='%s')
@@ -38,18 +55,17 @@ def main():
 
 
 class GenClust(BinaryProblem):
-  def __init__(self, data, pop_size: int = 8, clust_min: int = None):
+  def __init__(self, data, clust_min: int = None):
     super(GenClust, self).__init__()
 
     self.data = np.array(data)
     self.p = int(data.shape[0])
 
-    self.clust_min = clust_min or int(self.p * 0.20)
+    self.clust_min = int(self.p * 0.20) if clust_min == None else clust_min
+    self.clust_max = int(self.p - self.clust_min)
 
     self.k_min = 2
     self.k_max = int(self.p/self.clust_min)
-
-    self.clust_max = int(self.p-((self.k_max-1)*(self.clust_min)))
 
     self.number_of_bits = self.calc_number_of_bits()
     self.number_of_objectives = 1
@@ -59,27 +75,53 @@ class GenClust(BinaryProblem):
     self.obj_directions = [self.MINIMIZE]
     self.obj_labels = ["Ones"]
 
+    self.print_info()
+
   def evaluate(self, solution: BinarySolution) -> BinarySolution:
     counter_of_ones = 0
     for bits in solution.variables[0]:
       if bits:
         counter_of_ones += 1
+
     solution.objectives[0] = -1.0 * counter_of_ones
     return solution
 
   def create_solution(self) -> BinarySolution:
     new_solution = BinarySolution(
-        number_of_variables=1, number_of_objectives=1)
+        number_of_variables=1, number_of_objectives=1
+    )
     new_solution.variables[0] = [True if rd.randint(
         0, 1) == 0 else False for _ in range(self.number_of_bits)]
     return new_solution
 
   # calc
   def calc_number_of_bits(self):
-    num = self.k_max.bit_length()
-    num += (self.k_max * (self.p - self.clust_min))
+    global_li_max = self.calc_li_max(0, self.k_max, [])
+    global_idi_max = self.calc_idi_max(global_li_max)
+    return global_idi_max.bit_length()
+
+  def calc_li_max(self, i, k, chrom):
+    return (
+        self.p - ft.reduce(lambda a, b: a+b[0], chrom, 0)
+    ) - (
+        ((k-1) - i) * self.clust_min
+    )
+
+  def calc_idi_max(self, li_max):
+    return get_comb(self.p, li_max)
 
   #
+  def print_info(self):
+    print(
+        '***',
+        f'p: {self.p}, k ∈ [2 …  {self.k_max}]',
+        f'clust min: {self.clust_min}',
+        f'clust max: {self.clust_max}',
+        f'number of bits: {self.number_of_bits}',
+        '***',
+        sep='\n',
+    )
+
   def get_name(self) -> str:
     return "OneMax"
 
