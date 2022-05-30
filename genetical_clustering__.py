@@ -3,13 +3,17 @@ import random as rd
 import numpy as np
 import functools as ft
 
+from sklearn import tree
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+
 from jmetal.algorithm.singleobjective import GeneticAlgorithm
 from jmetal.core.problem import BinaryProblem
 from jmetal.core.solution import BinarySolution
-from jmetal.operator import SBXCrossover, PolynomialMutation, BestSolutionSelection
+from jmetal.operator import SPXCrossover, BitFlipMutation, BestSolutionSelection
 from jmetal.util.termination_criterion import StoppingByEvaluations
 
-rand_seed = 99
+rand_seed = 88
 np.random.seed(rand_seed)
 rd.seed(rand_seed)
 
@@ -25,31 +29,31 @@ def main():
       problem=gen_clu,
       population_size=100,
       offspring_population_size=100,
-      mutation=PolynomialMutation(
-          probability=1.0 / gen_clu.number_of_variables, distribution_index=20),
-      crossover=SBXCrossover(probability=1.0, distribution_index=20),
-      termination_criterion=StoppingByEvaluations(max_evaluations=25000),
+      mutation=BitFlipMutation(0.8),
+      crossover=SPXCrossover(0.8),
+      termination_criterion=StoppingByEvaluations(1000),
       selection=BestSolutionSelection()
   )
 
   gen_alg.run()
 
-  exit()
+  np.savetxt('genetical_clustering_accs.log', gen_clu.accs, fmt='%s')
+  print('result', gen_alg.get_result())
 
-  gen_clu = GenCluster(DATA, 16)
-  np.savetxt('genetical_clustering_.log', gen_clu.pop_bin, fmt='%s')
+  # gen_clu = GenCluster(DATA, 16)
+  # np.savetxt('genetical_clustering_.log', gen_clu.pop_bin, fmt='%s')
 
-  print(get_comb(gen_clu.pop_count-1, (gen_clu.pop_count-1)/2))
-  exit()
+  # print(get_comb(gen_clu.pop_count-1, (gen_clu.pop_count-1)/2))
+  # exit()
 
-  for i in range(gen_clu.pop_size):
+  # for i in range(gen_clu.pop_size):
 
-    print(i, gen_clu.pop[i])
-    print(i, gen_clu.pop_bin[i])
-    # print(i, get_set(rand_seed, gen_clu.pop[i][0][0], 15784))
+  #   print(i, gen_clu.pop[i])
+  #   print(i, gen_clu.pop_bin[i])
+  #   # print(i, get_set(rand_seed, gen_clu.pop[i][0][0], 15784))
 
-  # a = OneMax()
-  # print(a.create_solution())
+  # # a = OneMax()
+  # # print(a.create_solution())
 
   print('end')
 
@@ -67,38 +71,139 @@ class GenClust(BinaryProblem):
     self.k_min = 2
     self.k_max = int(self.p/self.clust_min)
 
+    self.li_max_global = self.calc_li_max(0, self.k_max, [])
+    self.idi_max_global = self.calc_idi_max(self.li_max_global, [])
+
     self.number_of_bits = self.calc_number_of_bits()
     self.number_of_objectives = 1
     self.number_of_variables = 1
     self.number_of_constraints = 0
 
-    self.obj_directions = [self.MINIMIZE]
-    self.obj_labels = ["Ones"]
+    self.obj_directions = [self.MAXIMIZE]
+    self.obj_labels = ['acc']
+
+    self.accs = []
 
     self.print_info()
 
   def evaluate(self, solution: BinarySolution) -> BinarySolution:
-    counter_of_ones = 0
-    for bits in solution.variables[0]:
-      if bits:
-        counter_of_ones += 1
+    chrom = self.decode_chrom(solution.variables[0])
+    k = len(chrom)
 
-    solution.objectives[0] = -1.0 * counter_of_ones
+    #
+    n = self.p
+    indexes = list(range(1, self.p + 1))
+    cluster_indexes = []
+
+    for i in range(k):
+      if (i + 1) == k:
+        for index in indexes:
+          cluster_indexes.append(
+              [index, i + 1]
+          )
+        break
+
+      [li, idi] = chrom[i]
+      set = get_set(idi, n, li)
+
+      for item in set:
+        cluster_indexes.append(
+            [indexes[item - 1], i + 1]
+        )
+
+      indexes = ft.reduce(
+          lambda a, b: a if b in set else a + [b],
+          indexes,
+          []
+      )
+
+      n -= li
+
+    #
+    data_class = [0] * self.p
+    for i in range(self.p):
+      item = cluster_indexes[i]
+      data_class[item[0]-1] = item[1]
+
+    data = self.data[:, 1:]
+    data = np.insert(data, 0, data_class, axis=1)
+
+    #
+    train_x, test_x, train_y, test_y = train_test_split(
+        data[:, 1:], data[:, 0], test_size=0.5, random_state=rand_seed
+    )
+
+    tree_classifier = tree.DecisionTreeClassifier()
+    tree_classifier.fit(train_x, train_y)
+    pred_y = tree_classifier.predict(test_x)
+
+    acc = metrics.accuracy_score(test_y, pred_y)
+
+    for i in range(k):
+      print('class ', i + 1, ':', (data[:, 0] == i+1).sum())
+    print('ACC:', acc, 'k:', k)
+    self.accs.append(acc)
+    # print('RMSE:', metrics.mean_squared_error(test_y, pred_y))
+    # print(metrics.confusion_matrix(test_y, pred_y))
+    print('_________________\n')
+
+    solution.objectives[0] = acc
     return solution
 
   def create_solution(self) -> BinarySolution:
     new_solution = BinarySolution(
         number_of_variables=1, number_of_objectives=1
     )
-    new_solution.variables[0] = [True if rd.randint(
-        0, 1) == 0 else False for _ in range(self.number_of_bits)]
+    new_solution.variables[0] = [
+        (not rd.randint(0, 1)) for _ in range(self.number_of_bits)
+    ]
     return new_solution
+
+  def decode_chrom(self, bin_chrom):
+    bin_chrom = [
+        str(1 if bin_chrom[i] else 0) for i in range(self.number_of_bits)
+    ]
+
+    k = int(''.join(bin_chrom[:self.k_max.bit_length()]), 2)
+    k = self.calc_wrap_k(k)
+
+    bin_chrom = bin_chrom[self.k_max.bit_length():]
+
+    gen_len = self.number_of_bits // self.k_max
+
+    bin_chrom = [
+        bin_chrom[j:j+gen_len]
+        for j in range(0, self.number_of_bits, gen_len)
+    ]
+
+    chrom = []
+    for i in range(k):
+      gen = [
+          bin_chrom[i][:self.li_max_global.bit_length()],
+          bin_chrom[i][self.li_max_global.bit_length():]
+      ]
+
+      gen[0] = int(''.join(gen[0]), 2)
+      li_max = self.calc_li_max(i, k, chrom)
+      gen[0] = self.calc_wrap_li(gen[0], li_max)
+
+      gen[1] = int(''.join(gen[1]), 2)
+      idi_max = self.calc_idi_max(gen[0], chrom)
+      gen[1] = gen[1] % idi_max
+
+      chrom.append(gen)
+
+    return chrom
 
   # calc
   def calc_number_of_bits(self):
-    global_li_max = self.calc_li_max(0, self.k_max, [])
-    global_idi_max = self.calc_idi_max(global_li_max)
-    return global_idi_max.bit_length()
+    return (
+        self.k_max.bit_length()
+        +
+        (self.li_max_global.bit_length() * self.k_max)
+        +
+        (self.idi_max_global.bit_length() * self.k_max)
+    )
 
   def calc_li_max(self, i, k, chrom):
     return (
@@ -107,10 +212,19 @@ class GenClust(BinaryProblem):
         ((k-1) - i) * self.clust_min
     )
 
-  def calc_idi_max(self, li_max):
-    return get_comb(self.p, li_max)
+  def calc_idi_max(self, li_max, chrom):
+    return get_comb(
+        self.p - ft.reduce(lambda a, b: a+b[0], chrom, 0),
+        li_max
+    )
 
+  def calc_wrap_k(self, k):
+    return (k-self.k_min) % (self.k_max-self.k_min+1) + self.k_min
+
+  def calc_wrap_li(self, li, li_max):
+    return (li-self.clust_min) % (li_max-self.clust_min+1) + self.clust_min
   #
+
   def print_info(self):
     print(
         '***',
@@ -123,7 +237,7 @@ class GenClust(BinaryProblem):
     )
 
   def get_name(self) -> str:
-    return "OneMax"
+    return "GenClust"
 
 
 class GenCluster():
@@ -241,29 +355,32 @@ class GenCluster():
     return decoded_chrom
 
 
-def get_set(Ralpha=0, P=0,  ID=0):
-  pool = list()
-  pool.append(1)
-  SOM = 0
+def get_set(i, n, k):
+  def C(n, k):
+    result = 1
+    for i in range(n):
+      result *= (i+1)
+    for i in range(k):
+      result //= (i+1)
+    for i in range(n-k):
+      result //= (i+1)
+    return result
 
-  for j in range(1, Ralpha+1):
-    cSOM = SOM
-    k = 0
-    while (cSOM <= ID):
-      SOM = cSOM
-      c = P-(pool[j-1]+(k))
+  c = []
+  r = i+0
+  j = 0
+  for s in range(1, k+1):
+    cs = j+1
+    while True:
+      _c = C(n-cs, k-s)
+      if not ((r - _c) > 0):
+        break
 
-      d = Ralpha-(j)
-      f = get_comb(c, d)
-      cSOM += f
-      if(cSOM <= ID):
-        k = k+1
-
-    pool[j-1] = pool[j-1]+(k)
-    if(j-1 < Ralpha-1):
-      pool.append(pool[j-1]+1)
-
-  return pool
+      r -= _c
+      cs += 1
+    c.append(cs)
+    j = cs
+  return c
 
 
 def get_comb(n, r):
