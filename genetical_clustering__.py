@@ -10,7 +10,7 @@ from sklearn import metrics
 from jmetal.algorithm.singleobjective import GeneticAlgorithm
 from jmetal.core.problem import BinaryProblem
 from jmetal.core.solution import BinarySolution
-from jmetal.operator import SPXCrossover, BitFlipMutation, BestSolutionSelection
+from jmetal.operator import SPXCrossover, BitFlipMutation, NullMutation, BestSolutionSelection
 from jmetal.util.termination_criterion import StoppingByEvaluations
 
 rand_seed = 88
@@ -27,11 +27,12 @@ def main():
 
   gen_alg = GeneticAlgorithm(
       problem=gen_clu,
-      population_size=100,
-      offspring_population_size=100,
-      mutation=BitFlipMutation(0.8),
+      population_size=20,
+      offspring_population_size=20,
+      # mutation=BitFlipMutation(0.1),
+      mutation=NullMutation(),
       crossover=SPXCrossover(0.8),
-      termination_criterion=StoppingByEvaluations(1000),
+      termination_criterion=StoppingByEvaluations(100),
       selection=BestSolutionSelection()
   )
 
@@ -147,7 +148,7 @@ class GenClust(BinaryProblem):
     # print(metrics.confusion_matrix(test_y, pred_y))
     print('_________________\n')
 
-    solution.objectives[0] = acc
+    solution.objectives[0] = acc * -1
     return solution
 
   def create_solution(self) -> BinarySolution:
