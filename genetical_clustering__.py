@@ -241,121 +241,6 @@ class GenClust(BinaryProblem):
     return "GenClust"
 
 
-class GenCluster():
-  def __init__(self, data, pop_size, pop_min=200):
-    self.data = np.array(data)
-    self.pop_size = int(pop_size)
-    self.pop_min = int(pop_min)
-    self.pop_count = int(data.shape[0])
-    self.k_min = 2
-    self.k_max = int(self.pop_count/self.pop_min)
-
-    self.bin_size = 16
-    self.bin_len = self.k_max * self.bin_size * 2
-
-    self.pop = self.gen_population()
-    self.pop_bin = self.calc_pop_bin()
-
-    print(
-        '***',
-        f'k ∈ [2 …  {self.k_max}] ',
-        f'p = {self.pop_count}, min_p = {self.pop_min}',
-        '***',
-        sep='\n'
-    )
-
-  def gen_population(self):
-    pop = []
-
-    for i in range(self.pop_size):
-      k = rd.randint(self.k_min, self.k_max)
-      chrom = []
-
-      for i in range(k):
-        li_max = self.calc_li_max(i, k, chrom)
-        li = rd.randint(self.pop_min, li_max) if i != k - 1 else li_max
-
-        idi_max = self.calc_idi_max(li_max)
-        idi = rd.randint(1, idi_max)
-
-        chrom.append([li, idi])
-
-      pop.append(chrom)
-
-    return pop
-
-  # fit
-  def fit(self):
-    return
-
-  # calc
-  def calc_li_max(self, i, k, chrom):
-    return (
-        self.pop_count - ft.reduce(lambda a, b: a+b[0], chrom, 0)
-    ) - (
-        ((k-1) - i) * self.pop_min
-    )
-
-  def calc_idi_max(self, li_max):
-    return 5  # get_comb(self.pop_count, li_max)
-
-  def calc_pop_bin(self, set=False):
-    def bin_func(x): return bin(x)[2:].zfill(self.bin_size)
-    bin_vec = np.vectorize(bin_func)
-
-    pop_bin = []
-
-    for i in range(self.pop_size):
-      pop_np = np.array(self.pop[i]).flatten()
-      pop_np = bin_vec(pop_np)
-      pop_np = ''.join(pop_np)
-      pop_np = pop_np.zfill(self.bin_len)
-
-      pop_bin.append(pop_np)
-
-    if set:
-      self.pop_bin = pop_bin
-
-    return pop_bin
-
-  def calc_pop_bin_reverse(self, set=False):
-    pop = []
-    for i in range(self.pop_size):
-      chrom = self.pop_bin[i]
-      chrom = [
-          chrom[j:j+self.bin_size]
-          for j in range(0, self.bin_len, self.bin_size)
-      ]
-      chrom = [
-          int(chrom[j], 2)
-          for j in range(len(chrom))
-      ]
-      chrom = chrom[get_first_positive_index(chrom):]
-      chrom = [
-          chrom[j:j+2]
-          for j in range(0, len(chrom), 2)
-      ]
-
-      pop.append(chrom)
-
-    if set:
-      self.pop = pop
-
-    return pop
-
-  def calc_fitness(self, decoded_chrom):
-    k = len(decoded_chrom)
-    for i in range(k):
-      [li, idi] = decoded_chrom[i]
-
-      set = get_set(rand_seed, li, idi)
-
-      # print(f'li: {li}, idi: {idi}')
-      # print(set)
-
-    return decoded_chrom
-
-
 def get_set(i, n, k):
   def C(n, k):
     result = 1
@@ -389,13 +274,6 @@ def get_comb(n, r):
     return (math.factorial(n) // (math.factorial(r) * math.factorial(n - r)))
   else:
     return 0
-
-
-def get_first_positive_index(arr: list):
-  for i in range(len(arr)):
-    if arr[i] > 0:
-      return i
-  return -1
 
 
 #
