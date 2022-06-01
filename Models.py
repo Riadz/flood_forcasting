@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 from datetime import datetime
 from timeit import default_timer as timer
+from sklearn import metrics
 
 base_url = r'.'
 
@@ -216,16 +217,13 @@ class ForcastModel(nn.Module):
     )
     print(f'✅ model saved as "{name}_{current_datetime}.pt"')
 
-  def test(self, data_x, data_y, bar=0.5):
-    # test
-    acc_array = []
-    for i in range(len(data_x)):
-      recon = self(data_x[i])
-      loss_ = self.crit(recon, data_y[i])
-      recon_ = 1 if recon[0].item() > bar else 0
-      acc_array.append(1 if data_y[i] == recon_ else 0)
+  def test(self, data_x, data_y):
+    pred_y = self(data_x).detach().numpy()
+    pred_y = list(map(lambda x: 1 if x > 0.5 else 0, pred_y))
 
-    print(f'loss: {loss_:.4f}, acc: {sum(acc_array)/len(data_y):.4f}')
+    print('ACC:', metrics.accuracy_score(data_y, pred_y))
+    print('RMSE:', metrics.mean_squared_error(data_y, pred_y))
+    print(metrics.confusion_matrix(data_y, pred_y))
 
 
 class ForcastModelMulti(nn.Module):
