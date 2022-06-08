@@ -8,10 +8,9 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 
 from jmetal.algorithm.singleobjective import GeneticAlgorithm
-from jmetal.core.operator import Crossover
 from jmetal.core.problem import BinaryProblem
 from jmetal.core.solution import BinarySolution
-from jmetal.operator import SPXCrossover, BitFlipMutation, NullMutation, BestSolutionSelection, BinaryTournamentSelection, crossover
+from jmetal.operator import SPXCrossover, BitFlipMutation, NullMutation, BestSolutionSelection, BinaryTournamentSelection
 from jmetal.util.termination_criterion import StoppingByEvaluations
 
 rand_seed = 88
@@ -37,7 +36,7 @@ def main():
       selection=BinaryTournamentSelection()
   )
 
-  # gen_alg.run()
+  gen_alg.run()
 
   np.savetxt('genetical_clustering_accs.log', gen_clu.accs, fmt='%s')
   print('result', gen_alg.get_result())
@@ -49,7 +48,10 @@ class GenClust(BinaryProblem):
   def __init__(self, data, clust_min: int = None):
     super(GenClust, self).__init__()
 
-    self.data = np.array(data)
+    self.data_full = np.array(data)
+    self.data = data[data[0] == 0]
+    print(len(self.data))
+    exit()
     self.p = int(data.shape[0])
 
     self.clust_min = int(self.p * 0.20) if clust_min == None else clust_min
@@ -137,7 +139,7 @@ class GenClust(BinaryProblem):
     # print(metrics.confusion_matrix(test_y, pred_y))
     print('_________________\n')
 
-    solution.objectives[0] = acc * -1
+    solution.objectives[0] = 1 - acc
     return solution
 
   def create_solution(self) -> BinarySolution:
@@ -228,67 +230,6 @@ class GenClust(BinaryProblem):
 
   def get_name(self) -> str:
     return "GenClust"
-
-
-class CustomCrossover(Crossover[BinarySolution, BinarySolution]):
-  def __init__(self, probability: float):
-    super(SPXCrossover, self).__init__(probability=probability)
-
-  def execute(self, parents: List[BinarySolution]) -> List[BinarySolution]:
-    Check.that(type(parents[0]) is BinarySolution, "Solution type invalid")
-    Check.that(type(parents[1]) is BinarySolution, "Solution type invalid")
-    Check.that(len(parents) == 2,
-               'The number of parents is not two: {}'.format(len(parents)))
-
-    offspring = [copy.deepcopy(parents[0]), copy.deepcopy(parents[1])]
-    rand = random.random()
-
-    if rand <= self.probability:
-      # 1. Get the total number of bits
-      total_number_of_bits = parents[0].get_total_number_of_bits()
-
-      # 2. Calculate the point to make the crossover
-      crossover_point = random.randrange(0, total_number_of_bits)
-
-      # 3. Compute the variable containing the crossover bit
-      variable_to_cut = 0
-      bits_count = len(parents[1].variables[variable_to_cut])
-      while bits_count < (crossover_point + 1):
-        variable_to_cut += 1
-        bits_count += len(parents[1].variables[variable_to_cut])
-
-      # 4. Compute the bit into the selected variable
-      diff = bits_count - crossover_point
-      crossover_point_in_variable = len(
-          parents[1].variables[variable_to_cut]) - diff
-
-      # 5. Apply the crossover to the variable
-      bitset1 = copy.copy(parents[0].variables[variable_to_cut])
-      bitset2 = copy.copy(parents[1].variables[variable_to_cut])
-
-      for i in range(crossover_point_in_variable, len(bitset1)):
-        swap = bitset1[i]
-        bitset1[i] = bitset2[i]
-        bitset2[i] = swap
-
-      offspring[0].variables[variable_to_cut] = bitset1
-      offspring[1].variables[variable_to_cut] = bitset2
-
-      # 6. Apply the crossover to the other variables
-      for i in range(variable_to_cut + 1, parents[0].number_of_variables):
-        offspring[0].variables[i] = copy.deepcopy(parents[1].variables[i])
-        offspring[1].variables[i] = copy.deepcopy(parents[0].variables[i])
-
-    return offspring
-
-  def get_number_of_parents(self) -> int:
-    return 2
-
-  def get_number_of_children(self) -> int:
-    return 2
-
-  def get_name(self) -> str:
-    return 'Single point crossover'
 
 
 def get_set(i, n, k):
