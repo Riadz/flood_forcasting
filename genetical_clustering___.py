@@ -10,8 +10,12 @@ from sklearn import metrics
 from jmetal.algorithm.singleobjective import GeneticAlgorithm
 from jmetal.core.problem import BinaryProblem
 from jmetal.core.solution import BinarySolution
-from jmetal.operator import SPXCrossover, BitFlipMutation, BestSolutionSelection, BinaryTournamentSelection
+from jmetal.operator import SPXCrossover, BitFlipMutation, NullMutation, BestSolutionSelection, BinaryTournamentSelection, crossover
 from jmetal.util.termination_criterion import StoppingByEvaluations
+from jmetal.core.operator import Crossover, Mutation
+from jmetal.util.ckecking import Check
+from typing import List
+import copy
 
 rand_seed = 88
 np.random.seed(rand_seed)
@@ -27,11 +31,11 @@ def main():
 
   gen_alg = GeneticAlgorithm(
       problem=gen_clu,
-      population_size=20,
-      offspring_population_size=18,
-      mutation=BitFlipMutation(0.01),
-      crossover=SPXCrossover(0.8),
-      termination_criterion=StoppingByEvaluations(10000),
+      population_size=10,
+      offspring_population_size=6,
+      mutation=CustomMutation(0.02, gen_clu),
+      crossover=CustomCrossover(0.8, gen_clu),
+      termination_criterion=StoppingByEvaluations(5000),
       selection=BinaryTournamentSelection()
   )
 
@@ -47,10 +51,7 @@ class GenClust(BinaryProblem):
   def __init__(self, data, clust_min: int = None):
     super(GenClust, self).__init__()
 
-    self.data_full = np.array(data)
-    self.data = data[data[0] == 0]
-    print(len(self.data))
-    exit()
+    self.data = np.array(data)
     self.p = int(data.shape[0])
 
     self.clust_min = int(self.p * 0.20) if clust_min == None else clust_min
@@ -71,6 +72,7 @@ class GenClust(BinaryProblem):
     self.obj_labels = ['acc']
 
     self.accs = []
+    self.best_acc = 0
     self.eva_n = 0
 
     self.print_info()
@@ -129,16 +131,20 @@ class GenClust(BinaryProblem):
     acc = metrics.accuracy_score(test_y, pred_y)
 
     self.eva_n += 1
+    if acc > self.best_acc:
+      self.best_acc = acc
+
     print(f'evaluation N:{self.eva_n}')
     for i in range(k):
       print('class ', i + 1, ':', (data[:, 0] == i+1).sum())
     print('ACC:', acc, 'k:', k)
+    print('B ACC:', self.best_acc)
     self.accs.append(acc)
     # print('RMSE:', metrics.mean_squared_error(test_y, pred_y))
     # print(metrics.confusion_matrix(test_y, pred_y))
     print('_________________\n')
 
-    solution.objectives[0] = 1 - acc
+    solution.objectives[0] = acc * -1
     return solution
 
   def create_solution(self) -> BinarySolution:
@@ -231,24 +237,123 @@ class GenClust(BinaryProblem):
     return "GenClust"
 
 
-def get_set(i, n, k):
-  def C(n, k):
-    result = 1
-    for i in range(n):
-      result *= (i+1)
-    for i in range(k):
-      result //= (i+1)
-    for i in range(n-k):
-      result //= (i+1)
-    return result
+class CustomCrossover(Crossover[BinarySolution, BinarySolution]):
 
+  def __init__(self, probability: float, problem: GenClust):
+    self.problem = problem
+    super(CustomCrossover, self).__init__(probability=probability)
+
+  def execute(self, parents: List[BinarySolution]) -> List[BinarySolution]:
+    Check.that(type(parents[0]) is BinarySolution, "Solution type invalid")
+    Check.that(type(parents[1]) is BinarySolution, "Solution type invalid")
+    Check.that(len(parents) == 2,
+               'The number of parents is not two: {}'.format(len(parents)))
+
+    offspring = [copy.deepcopy(parents[0]), copy.deepcopy(parents[1])]
+    rand = rd.random()
+
+    if rand <= self.probability:
+      # 1. Get the total number of bits
+      d_parents = [
+          self.problem.decode_chrom(parents[0].variables[0]),
+          self.problem.decode_chrom(parents[1].variables[0])
+      ]
+      k_max_cross = max(len(d_parents[0]), len(d_parents[1]))
+      total_number_of_bits = (
+          self.problem.k_max.bit_length()
+          +
+          (self.problem.li_max_global.bit_length() * k_max_cross)
+          +
+          (self.problem.idi_max_global.bit_length() * k_max_cross)
+      )
+
+      # 2. Calculate the point to make the crossover
+      crossover_point = rd.randrange(0, total_number_of_bits)
+
+      # 3. Compute the variable containing the crossover bit
+      variable_to_cut = 0
+      bits_count = len(parents[1].variables[variable_to_cut])
+      while bits_count < (crossover_point + 1):
+        variable_to_cut += 1
+        bits_count += len(parents[1].variables[variable_to_cut])
+
+      # 4. Compute the bit into the selected variable
+      diff = bits_count - crossover_point
+      crossover_point_in_variable = len(
+          parents[1].variables[variable_to_cut]) - diff
+
+      # 5. Apply the crossover to the variable
+      bitset1 = copy.copy(parents[0].variables[variable_to_cut])
+      bitset2 = copy.copy(parents[1].variables[variable_to_cut])
+
+      for i in range(crossover_point_in_variable, len(bitset1)):
+        swap = bitset1[i]
+        bitset1[i] = bitset2[i]
+        bitset2[i] = swap
+
+      offspring[0].variables[variable_to_cut] = bitset1
+      offspring[1].variables[variable_to_cut] = bitset2
+
+      # 6. Apply the crossover to the other variables
+      for i in range(variable_to_cut + 1, parents[0].number_of_variables):
+        offspring[0].variables[i] = copy.deepcopy(
+            parents[1].variables[i])
+        offspring[1].variables[i] = copy.deepcopy(
+            parents[0].variables[i])
+
+    return offspring
+
+  def get_number_of_parents(self) -> int:
+    return 2
+
+  def get_number_of_children(self) -> int:
+    return 2
+
+  def get_name(self) -> str:
+    return 'Single point crossover'
+
+
+class CustomMutation(Mutation[BinarySolution]):
+
+  def __init__(self, probability: float, problem: GenClust):
+    self.problem = problem
+    super(CustomMutation, self).__init__(probability=probability)
+
+  def execute(self, solution: BinarySolution) -> BinarySolution:
+    Check.that(type(solution) is BinarySolution, "Solution type invalid")
+
+    for i in range(solution.number_of_variables):
+      chrom = self.problem.decode_chrom(solution.variables[i])
+      k_max_mut = len(chrom)
+      total_number_of_bits = (
+          self.problem.k_max.bit_length()
+          +
+          (self.problem.li_max_global.bit_length() * k_max_mut)
+          +
+          (self.problem.idi_max_global.bit_length() * k_max_mut)
+      )
+
+      for j in range(total_number_of_bits):
+        rand = rd.random()
+        if rand <= self.probability:
+          solution.variables[i][j] = True if solution.variables[i][j] is False else False
+
+    return solution
+
+  def get_name(self):
+    return 'BitFlip mutation'
+
+#
+
+
+def get_set(i, n, k):
   c = []
   r = i+0
   j = 0
   for s in range(1, k+1):
     cs = j+1
     while True:
-      _c = C(n-cs, k-s)
+      _c = get_comb(n-cs, k-s)
       if not ((r - _c) > 0):
         break
 
