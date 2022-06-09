@@ -166,11 +166,12 @@ class GenClust(BinaryProblem):
 
     bin_chrom = bin_chrom[self.k_max.bit_length():]
 
-    gen_len = self.number_of_bits // self.k_max
+    gen_bits_len = self.number_of_bits - self.k_max.bit_length()
+    gen_len = gen_bits_len // self.k_max
 
     bin_chrom = [
         bin_chrom[j:j+gen_len]
-        for j in range(0, self.number_of_bits, gen_len)
+        for j in range(0, gen_bits_len, gen_len)
     ]
 
     chrom = []
