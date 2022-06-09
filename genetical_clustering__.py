@@ -30,7 +30,7 @@ def main():
       problem=gen_clu,
       population_size=100,
       offspring_population_size=70,
-      mutation=BitFlipMutation(0.03),
+      mutation=BitFlipMutation(0.02),
       crossover=SPXCrossover(0.8),
       termination_criterion=StoppingByEvaluations(5000),
       selection=BinaryTournamentSelection()
