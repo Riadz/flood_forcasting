@@ -10,7 +10,7 @@ from sklearn import metrics
 from jmetal.algorithm.singleobjective import GeneticAlgorithm
 from jmetal.core.problem import BinaryProblem
 from jmetal.core.solution import BinarySolution
-from jmetal.operator import SPXCrossover, BitFlipMutation, NullMutation, BestSolutionSelection, BinaryTournamentSelection
+from jmetal.operator import SPXCrossover, BitFlipMutation, BestSolutionSelection, BinaryTournamentSelection
 from jmetal.util.termination_criterion import StoppingByEvaluations
 
 rand_seed = 88
@@ -30,7 +30,6 @@ def main():
       population_size=20,
       offspring_population_size=18,
       mutation=BitFlipMutation(0.01),
-      # mutation=NullMutation(),
       crossover=SPXCrossover(0.8),
       termination_criterion=StoppingByEvaluations(10000),
       selection=BinaryTournamentSelection()
