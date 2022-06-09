@@ -28,16 +28,15 @@ def main():
 
   gen_alg = GeneticAlgorithm(
       problem=gen_clu,
-      population_size=20,
-      offspring_population_size=18,
-      mutation=BitFlipMutation(0.01),
-      # mutation=NullMutation(),
+      population_size=100,
+      offspring_population_size=70,
+      mutation=BitFlipMutation(0.03),
       crossover=SPXCrossover(0.8),
-      termination_criterion=StoppingByEvaluations(10000),
+      termination_criterion=StoppingByEvaluations(5000),
       selection=BinaryTournamentSelection()
   )
 
-  # gen_alg.run()
+  gen_alg.run()
 
   np.savetxt('genetical_clustering_accs.log', gen_clu.accs, fmt='%s')
   print('result', gen_alg.get_result())
@@ -70,6 +69,7 @@ class GenClust(BinaryProblem):
     self.obj_labels = ['acc']
 
     self.accs = []
+    self.best_acc = 0
     self.eva_n = 0
 
     self.print_info()
@@ -128,10 +128,14 @@ class GenClust(BinaryProblem):
     acc = metrics.accuracy_score(test_y, pred_y)
 
     self.eva_n += 1
+    if acc > self.best_acc:
+      self.best_acc = acc
+
     print(f'evaluation N:{self.eva_n}')
     for i in range(k):
       print('class ', i + 1, ':', (data[:, 0] == i+1).sum())
     print('ACC:', acc, 'k:', k)
+    print('B ACC:', self.best_acc)
     self.accs.append(acc)
     # print('RMSE:', metrics.mean_squared_error(test_y, pred_y))
     # print(metrics.confusion_matrix(test_y, pred_y))
@@ -230,77 +234,7 @@ class GenClust(BinaryProblem):
     return "GenClust"
 
 
-class CustomCrossover(Crossover[BinarySolution, BinarySolution]):
-  def __init__(self, probability: float):
-    super(SPXCrossover, self).__init__(probability=probability)
-
-  def execute(self, parents: List[BinarySolution]) -> List[BinarySolution]:
-    Check.that(type(parents[0]) is BinarySolution, "Solution type invalid")
-    Check.that(type(parents[1]) is BinarySolution, "Solution type invalid")
-    Check.that(len(parents) == 2,
-               'The number of parents is not two: {}'.format(len(parents)))
-
-    offspring = [copy.deepcopy(parents[0]), copy.deepcopy(parents[1])]
-    rand = random.random()
-
-    if rand <= self.probability:
-      # 1. Get the total number of bits
-      total_number_of_bits = parents[0].get_total_number_of_bits()
-
-      # 2. Calculate the point to make the crossover
-      crossover_point = random.randrange(0, total_number_of_bits)
-
-      # 3. Compute the variable containing the crossover bit
-      variable_to_cut = 0
-      bits_count = len(parents[1].variables[variable_to_cut])
-      while bits_count < (crossover_point + 1):
-        variable_to_cut += 1
-        bits_count += len(parents[1].variables[variable_to_cut])
-
-      # 4. Compute the bit into the selected variable
-      diff = bits_count - crossover_point
-      crossover_point_in_variable = len(
-          parents[1].variables[variable_to_cut]) - diff
-
-      # 5. Apply the crossover to the variable
-      bitset1 = copy.copy(parents[0].variables[variable_to_cut])
-      bitset2 = copy.copy(parents[1].variables[variable_to_cut])
-
-      for i in range(crossover_point_in_variable, len(bitset1)):
-        swap = bitset1[i]
-        bitset1[i] = bitset2[i]
-        bitset2[i] = swap
-
-      offspring[0].variables[variable_to_cut] = bitset1
-      offspring[1].variables[variable_to_cut] = bitset2
-
-      # 6. Apply the crossover to the other variables
-      for i in range(variable_to_cut + 1, parents[0].number_of_variables):
-        offspring[0].variables[i] = copy.deepcopy(parents[1].variables[i])
-        offspring[1].variables[i] = copy.deepcopy(parents[0].variables[i])
-
-    return offspring
-
-  def get_number_of_parents(self) -> int:
-    return 2
-
-  def get_number_of_children(self) -> int:
-    return 2
-
-  def get_name(self) -> str:
-    return 'Single point crossover'
-
-
 def get_set(i, n, k):
-  def C(n, k):
-    result = 1
-    for i in range(n):
-      result *= (i+1)
-    for i in range(k):
-      result //= (i+1)
-    for i in range(n-k):
-      result //= (i+1)
-    return result
 
   c = []
   r = i+0
@@ -308,7 +242,7 @@ def get_set(i, n, k):
   for s in range(1, k+1):
     cs = j+1
     while True:
-      _c = C(n-cs, k-s)
+      _c = get_comb(n-cs, k-s)
       if not ((r - _c) > 0):
         break
 
