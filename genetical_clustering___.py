@@ -31,11 +31,11 @@ def main():
 
   gen_alg = GeneticAlgorithm(
       problem=gen_clu,
-      population_size=10,
-      offspring_population_size=6,
+      population_size=100,
+      offspring_population_size=80,
       mutation=CustomMutation(0.02, gen_clu),
       crossover=CustomCrossover(0.8, gen_clu),
-      termination_criterion=StoppingByEvaluations(5000),
+      termination_criterion=StoppingByEvaluations(10000),
       selection=BinaryTournamentSelection()
   )
 
