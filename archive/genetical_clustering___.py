@@ -29,6 +29,9 @@ def main():
 
   gen_clu = GenClust(DATA)
 
+  print(gen_clu.idi_max_global)
+  exit()
+
   gen_alg = GeneticAlgorithm(
       problem=gen_clu,
       population_size=100,
