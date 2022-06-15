@@ -10,6 +10,7 @@ kmeans-pytorch==0.3
 graphviz==0.20
 pydotplus==2.0.2
 jmetalpy==1.5.5
+python-docx==0.8.11
 
 #
 autopep8==1.6.0
